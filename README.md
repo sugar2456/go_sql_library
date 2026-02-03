@@ -148,3 +148,52 @@ docker exec go_app go test -v ./ent/...
 # カバレッジを確認
 docker exec go_app go test -cover ./standard/... ./sqlx/... ./gorm/... ./ent/...
 ```
+
+## パフォーマンステスト
+
+各SQLライブラリのパフォーマンスを比較するベンチマークテストが用意されています。
+通常のテストとは分離されており、`-tags=benchmark`オプションで実行します。
+
+### ベンチマークの実行方法
+
+```bash
+# 全てのベンチマークを実行（コンテナ内）
+docker exec go_app go test -tags=benchmark -bench=. -benchmem ./standard/... ./sqlx/... ./gorm/... ./ent/...
+
+# 個別のパッケージをベンチマーク
+docker exec go_app go test -tags=benchmark -bench=. -benchmem ./standard/...
+
+# 特定のベンチマークのみ実行
+docker exec go_app go test -tags=benchmark -bench=BenchmarkGetAll -benchmem ./standard/...
+
+# 実行時間を指定（デフォルトは1秒）
+docker exec go_app go test -tags=benchmark -bench=. -benchtime=5s -benchmem ./standard/...
+```
+
+### ベンチマーク内容
+
+各パッケージで以下のベンチマークを実施：
+- `BenchmarkGetAll` - 全ユーザー取得
+- `BenchmarkGetByID` - ID指定取得
+- `BenchmarkCreate` - ユーザー作成
+- `BenchmarkUpdate` - ユーザー更新
+- `BenchmarkConcurrentReads` - 並行読み取り
+- `BenchmarkConcurrentWrites` - 並行書き込み
+- `BenchmarkBulkInsert` - 大量挿入（10/100/1000件）
+
+### 結果の見方
+
+```
+BenchmarkGetAll-8    5000    250000 ns/op    1024 B/op    20 allocs/op
+```
+
+- `5000` - 実行回数
+- `250000 ns/op` - 1操作あたりのナノ秒（値が小さいほど高速）
+- `1024 B/op` - 1操作あたりのメモリ使用量
+- `20 allocs/op` - 1操作あたりのメモリアロケーション数
+
+### 通常テストとの分離
+
+ベンチマークテストは`//go:build benchmark`タグで分離されているため：
+- 通常のテスト: `go test ./...` ではベンチマークは実行されない
+- ベンチマーク: `go test -tags=benchmark -bench=. ./...` で実行
